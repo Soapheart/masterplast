@@ -1,31 +1,65 @@
-// How to get an access token:
-// http://jelled.com/instagram/access-token
+let instagramURL = 'https://api.instagram.com/v1/users/' + user + '/media/recent?access_token=' + accessToken;
+console.log(instagramURL);
 
-// TODO:
-// - improve UI
-// - make it easy to copy and paste image url
+const getInstagramMedia = (data) => {
+	const media = data.data;
+	const fragment = document.createDocumentFragment();
+	
+	media.forEach(element => {
+		const mediaClone = document.querySelector('#instagram-' + element.type).content.cloneNode(true);
+		
+		mediaClone.querySelector('a').href = element.link;
+		if (element.caption !== null && element.caption.text !== null) {
+			mediaClone.querySelector('a').title = element.caption.text;
+		}
+		mediaClone.querySelector('.image img').src = element.images.low_resolution.url;
+		if (element.caption !== null && element.caption.text !== null) {
+			mediaClone.querySelector('.image img').alt = element.caption.text;
+		}
+		mediaClone.querySelector('.user img').src = element.user.profile_picture;
 
-// {{model.user.username}}, {{likes}} likes
+		fragment.appendChild(mediaClone);
+	});
+	
+	document.getElementById('instagram-media').appendChild(fragment);
 
-var galleryFeed = new Instafeed({
-  get: "user",
-  userId: 4622774,
-  accessToken: "4622774.7cbaeb5.ec8c5041b92b44ada03e4a4a9153bc54",
-  resolution: "standard_resolution",
-  useHttp: "true",
-  limit: 6,
-  template: '<div class="col-xs-12 col-sm-6 col-md-4"><a href="{{image}}"><div class="img-featured-container"><div class="img-backdrop"></div><div class="description-container"><p class="caption">{{caption}}</p><span class="likes"><i class="icon ion-heart"></i> {{likes}}</span><span class="comments"><i class="icon ion-chatbubble"></i> {{comments}}</span></div><img src="{{image}}" class="img-responsive"></div></a></div>',
-  target: "instafeed-gallery-feed",
-  after: function() {
-    // disable button if no more results to load
-    if (!this.hasNext()) {
-      btnInstafeedLoad.setAttribute('disabled', 'disabled');
-    }
-  },
+	if (data.pagination.next_url !== undefined) {
+		instagramURL = data.pagination.next_url;
+		document.querySelector('.load-more').disabled = false;
+	} else {
+		document.querySelector('.load-more').parentNode.removeChild(document.querySelector('.load-more'));
+	}
+};
+
+document.querySelector('.load-more').addEventListener('click', (event) => {
+	event.target.disabled = true;
+
+	getInstagramFeed(instagramURL);
 });
-galleryFeed.run();
 
-var btnInstafeedLoad = document.getElementById("btn-instafeed-load");
-btnInstafeedLoad.addEventListener("click", function() {
-  galleryFeed.next()
-});
+
+const getInstagramFeed = (instagramURL) => {
+	const validateResponse = (response) => {
+		if (!response.ok) {
+			throw Error(response.status, response.statusText);
+		}
+
+		return response;
+	};
+	const readResponseAsJSON = (response) => {
+		return response.json();
+	};
+	const logResult = (result) => {
+		console.log('And the results are in: \n', result);
+	};
+	const logError = (error) => {
+		console.log('Looks like there was a problem: \n', error);
+	};
+
+	fetch(instagramURL)
+	.then(validateResponse)
+	.then(readResponseAsJSON)
+	.then(getInstagramMedia)
+	.catch(logError);
+};
+getInstagramFeed(instagramURL);
